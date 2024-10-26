@@ -39,8 +39,8 @@ on:
 
 env:
   ACR_RESOURCE_GROUP: myResourceGroup
-  AZURE_CONTAINER_REGISTRY: acrworkflow1729972072423
-  CONTAINER_NAME: image-workflow-1729972072423
+  AZURE_CONTAINER_REGISTRY: taisregistry
+  CONTAINER_NAME: tais-image
   CLUSTER_RESOURCE_GROUP: myResourceGroup
   CLUSTER_NAME: myAKSCluster
   DEPLOYMENT_MANIFEST_PATH: |
@@ -50,7 +50,7 @@ env:
     ./manifests/db-service.yaml
   DOCKER_FILE: ./docker-compose.yml
   BUILD_CONTEXT_PATH: ./
-  NAMESPACE: namespace-workflow-1729972072423
+  NAMESPACE: dev-namespace
 
 jobs:
   buildImage:
