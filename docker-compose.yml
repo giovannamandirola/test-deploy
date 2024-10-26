@@ -2,10 +2,10 @@ services:
   db:
     image: mysql:9.1
     ports:
-      - ${DB_PORT}:${DB_LOCAL_PORT}
+      - 3306:3306
     environment:
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_ROOT_PASSWORD=${DB_PASS}
+      - MYSQL_DATABASE=db-is
+      - MYSQL_ROOT_PASSWORD=123456
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
       interval: 5s
@@ -13,7 +13,7 @@ services:
       timeout: 20s
 
   app:
-    build: .
+    buildc.
     depends_on:
       db:
         condition: service_healthy
@@ -21,4 +21,4 @@ services:
     links:
       - db
     ports:
-      - ${APP_PORT}:${APP_PORT}
+      - 3000:3000
