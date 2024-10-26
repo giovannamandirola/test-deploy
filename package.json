@@ -1,0 +1,30 @@
+{
+  "name": "topicos-avanzados-is",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --env-file=.env --watch index.js",
+    "lint": "npx standard",
+    "lint:fix": "npx standard --fix",
+    "test": "jest"
+  },
+  "pre-commit": [
+    "test",
+    "lint:fix"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.1",
+    "mysql2": "^3.11.3",
+    "sequelize": "^6.37.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "pre-commit": "^1.2.2",
+    "standard": "^17.1.2"
+  }
+}
