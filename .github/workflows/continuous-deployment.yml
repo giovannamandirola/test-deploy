@@ -6,71 +6,55 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_REGISTRY: "registrytopicos"
+  AZURE_CONTAINER_REGISTRY: "taiscontainerregistry"
   CONTAINER_NAME: "test"
-  RESOURCE_GROUP: "resources-group"
-  CLUSTER_NAME: "cluster"
+  RESOURCE_GROUP: "myResourceGroup"
+  CLUSTER_NAME: "myAKSCluster"
   DOCKER_COMPOSE_FILE_PATH: "docker-compose.yml"
 
 jobs:
-  buildImage:
-    permissions:
-      contents: read
-      id-token: write
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      # Step 1: Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-
-      - name: Build and push image to ACR
+      # Step 2: Set up environment variables from GitHub Secrets
+      - name: Set environment variables
         run: |
-          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.RESOURCE_GROUP }} .
+          echo "DB_NAME=${{ vars.DB_NAME }}" >> $GITHUB_ENV
+          echo "DB_PASS=${{ secrets.DB_PASS }}" >> $GITHUB_ENV
+          echo "DB_PORT=${{ vars.DB_PORT }}" >> $GITHUB_ENV
+          echo "DB_LOCAL_PORT=${{ vars.DB_LOCAL_PORT }}" >> $GITHUB_ENV
+          echo "APP_PORT=${{ vars.APP_PORT }}" >> $GITHUB_ENV
+        # Add more environment variables as needed
 
-  deploy:
-    permissions:
-      actions: read
-      contents: read
-      id-token: write
-    runs-on: ubuntu-latest
-    needs: [buildImage]
-    steps:
-      - uses: actions/checkout@v4
+      # Step 3: Install Kompose
+      - name: Install Kompose
+        run: |
+          curl -L https://github.com/kubernetes/kompose/releases/download/v1.26.1/kompose-linux-amd64 -o kompose
+          chmod +x kompose
+          sudo mv kompose /usr/local/bin/kompose
 
-      - name: Azure login
-        uses: azure/login@v2
+      # Step 4: Convert Docker Compose to Kubernetes manifests
+      - name: Convert Docker Compose to Kubernetes
+        run: |
+          kompose convert
+
+      # Step 5: Log in to Azure
+      - name: Azure Login
+        uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set up kubelogin for non-interactive login
-        uses: azure/use-kubelogin@v1
-        with:
-          kubelogin-version: 'v0.0.25'
+      # Step 6: Set up kubectl for AKS
+      - name: Set up kubectl
+        run: |
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }}
 
-      - name: Get K8s context
-        uses: azure/aks-set-context@v3
-        with:
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          cluster-name: ${{ env.CLUSTER_NAME }}
-          admin: 'false'
-          use-kubelogin: 'true'
-
-      - name: Bake deployment
-        uses: azure/k8s-bake@v2
-        with:
-          renderEngine: "kompose"
-          dockerComposeFile: ${{ env.DOCKER_COMPOSE_FILE_PATH }}
-          kompose-version: "latest"
-        id: bake
-
-      - name: Deploy application
-        uses: Azure/k8s-deploy@v4
-        with:
-          action: deploy
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
-          images: |
-            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+      # Step 7: Deploy to AKS
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f ./
