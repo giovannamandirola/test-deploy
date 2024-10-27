@@ -13,7 +13,7 @@ services:
       timeout: 20s
 
   app:
-    image: taisrepository.azurecr.io/tais-app:latest
+    image: taisregistry.azurecr.io/tais-app:latest
     build: .
     depends_on:
       db:
