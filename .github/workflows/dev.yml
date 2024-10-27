@@ -62,8 +62,11 @@ jobs:
       - name: Build and Push Docker images
         run: |
           docker-compose -f docker-compose.yml build
+          
+      - name: Push Docker images
+        run: |
           docker-compose -f docker-compose.yml push
-
+          
   deploy:
     permissions:
       actions: read
