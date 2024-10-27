@@ -61,11 +61,11 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker-compose -f docker-compose.yml build
+          docker-compose -f ${{ env.DOCKER_FILE_PATH }} build
           
       - name: Push Docker images
         run: |
-          docker-compose -f docker-compose.yml push
+          docker-compose -f ${{ env.DOCKER_FILE_PATH }} push
           
   deploy:
     permissions:
@@ -85,16 +85,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Install Kompose
-        run: |
-          curl -L https://github.com/kubernetes/kompose/releases/download/v1.26.1/kompose-linux-amd64 -o kompose
-          chmod +x kompose
-          sudo mv kompose /usr/local/bin/kompose
-
-      - name: Convert Docker Compose to Kubernetes Manifests
-        run: |
-          kompose convert -f ${{ env.DOCKER_FILE_PATH }} -o ${{ env.MANIFEST_PATH }}
 
       - name: Set up kubelogin for non-interactive login
         uses: azure/use-kubelogin@v1
