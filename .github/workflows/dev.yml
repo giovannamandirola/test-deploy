@@ -26,7 +26,7 @@ env:
   AZURE_CONTAINER_REGISTRY: taisregistry
   AZURE_CLUSTER_NAME: myAKSCluster
   AZURE_CONTAINER_NAME: tais
-  AZURE_NAMESPACE: tais
+  AZURE_NAMESPACE: dev-namespace
   MANIFEST_PATH: ./k8s
   DOCKER_FILE_PATH: ./docker-compose.yml
 
