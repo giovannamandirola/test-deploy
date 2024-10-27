@@ -94,7 +94,6 @@ jobs:
 
       - name: Convert Docker Compose to Kubernetes Manifests
         run: |
-          mkdir ${{ env.MANIFEST_PATH }}
           kompose convert -f ${{ env.DOCKER_FILE_PATH }} -o ${{ env.MANIFEST_PATH }}
 
       - name: Set up kubelogin for non-interactive login
