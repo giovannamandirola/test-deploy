@@ -81,7 +81,7 @@ jobs:
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
-          dns-name-label: tais
+          dns-name-label: taisprod
           image: '${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/tais-app:latest'
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
