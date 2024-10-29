@@ -71,8 +71,8 @@ jobs:
       - name: Set up Docker ACI Context
         run: |
           az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          docker context create aci myacicontext
-          docker context use myacicontext
+          docker context create ${{ env.AZURE_CONTAINER_INSTANCES }}
+          docker context use ${{ env.AZURE_CONTAINER_INSTANCES }}
 
       - name: Deploy to ACI
         run: docker compose up -d
