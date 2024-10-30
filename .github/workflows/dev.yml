@@ -25,6 +25,7 @@ env:
   AZURE_RESOURCE_GROUP: tais-resource-group
   AZURE_CONTAINER_REGISTRY: taiscontainerregistry
   AZURE_CONTAINER_INSTANCES: taisacicontext
+  AZURE_CONTAINER_NAME: taisprod
 
   DOCKER_FILE_PATH: ./docker-compose.yml
 
@@ -78,15 +79,14 @@ jobs:
       #   run: docker compose up -d
 
       - name: 'Deploy to Azure Container Instances'
-        uses: 'azure/aci-deploy@v1'
-        with:
-          resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
-          dns-name-label: taisprod
-          image: '${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/tais-app:latest'
-          registry-username: ${{ secrets.REGISTRY_USERNAME }}
-          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-          name: taiscontainer
-          location: 'west us'
+        run: |
+          az container create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --file ${{ env.DOCKER_FILE_PATH }} \
+          --registry-login-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
+          --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+          --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+          --name ${{ env.AZURE_CONTAINER_NAME }}
+
   # deploy:
   #   permissions:
   #     actions: read
