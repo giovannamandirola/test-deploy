@@ -1,6 +1,6 @@
 services:
-  db:
-    image: mysql:9.1
+  mysql:
+    image: taiscontainerregistry.azurecr.io/mysql:9.1
     ports:
       - 3306:3306
     environment:
@@ -13,13 +13,20 @@ services:
       timeout: 20s
 
   app:
-    image: taiscontainerregistry.azurecr.io/tais-app:latest
+    image: taiscontainerregistry.azurecr.io/tais-app:$GITHUB_SHA
     build: .
+    environment:
+      - DB_NAME=db-is
+      - DB_USER=root
+      - DB_PASS=123456
+      - DB_HOST=mysql
+      - DB_LOCAL_PORT=3306
+      - ENV=Dev
     depends_on:
-      db:
+      mysql:
         condition: service_healthy
         restart: true
     links:
-      - db
+      - mysql
     ports:
       - 3000:3000
