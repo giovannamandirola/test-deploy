@@ -14,6 +14,22 @@
 #    - AZURE_CLIENT_ID
 #    - AZURE_TENANT_ID
 #    - AZURE_SUBSCRIPTION_ID
+#
+# 2. Set the following environment variables (or replace the values below):
+#    - ACR_RESOURCE_GROUP (resource group of your ACR)
+#    - AZURE_CONTAINER_REGISTRY (name of your container registry / ACR)
+#    - CLUSTER_RESOURCE_GROUP (where your cluster is deployed)
+#    - CLUSTER_NAME (name of your AKS cluster)
+#    - CONTAINER_NAME (name of the container image you would like to push up to your ACR)
+#    - DEPLOYMENT_MANIFEST_PATH (path to the manifest yaml for your deployment)
+#    - DOCKER_FILE (path to your Dockerfile)
+#    - BUILD_CONTEXT_PATH (path to the context of your Dockerfile)
+#    - NAMESPACE (namespace to deploy your application)
+#
+# For more information on GitHub Actions for Azure, refer to https://github.com/Azure/Actions
+# For more samples to get started with GitHub Action workflows to deploy to Azure, refer to https://github.com/Azure/actions-workflow-samples
+# For more options with the actions used below please refer to https://github.com/Azure/login
+
 name: dev
 
 on:
@@ -22,129 +38,90 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_RESOURCE_GROUP: tais-resource-group
+  ACR_RESOURCE_GROUP: tais-resource-group
   AZURE_CONTAINER_REGISTRY: taiscontainerregistry
-  AZURE_CONTAINER_INSTANCES: taisacicontext
-  AZURE_CONTAINER_NAME: taisprod
-
-  DOCKER_FILE_PATH: ./docker-compose.yml
-
-  # AZURE_NAMESPACE: dev-namespace
-  # AZURE_CONTAINER_NAME: tais
-  # MANIFEST_PATH: ./k8s
-  # AZURE_CLUSTER_NAME: myAKSCluster
+  CONTAINER_NAME: tais-app
+  CLUSTER_RESOURCE_GROUP: tais-resource-group
+  CLUSTER_NAME: tais-cluster
+  DEPLOYMENT_MANIFEST_PATH: |
+    k8s/manifests/deployment.yaml
+    k8s/manifests/service.yaml
+  DOCKER_FILE: ./Dockerfile
+  BUILD_CONTEXT_PATH: ./
+  NAMESPACE: default
 
 jobs:
-  build-and-push:
+  buildImage:
     permissions:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      # Checks out the repository this file is in
+      - uses: actions/checkout@v3
 
-      - name: Log in to Azure
+      # Logs in with your Azure credentials
+      - name: Azure login
         uses: azure/login@v1.4.6
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-       
-      - name: Install Docker Compose
+      # Builds and pushes an image up to your Azure Container Registry
+      - name: Build and push image to ACR
         run: |
-          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
+          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.ACR_RESOURCE_GROUP }} -f ${{ env.DOCKER_FILE }} ${{ env.BUILD_CONTEXT_PATH }}
+  deploy:
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs: [buildImage]
+    steps:
+      # Checks out the repository this file is in
+      - uses: actions/checkout@v3
 
-      - name: Log in to ACR
-        run: az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+      # Logs in with your Azure credentials
+      - name: Azure login
+        uses: azure/login@v1.4.6
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build Docker images
+      # Use kubelogin to configure your kubeconfig for Azure auth
+      - name: Set up kubelogin for non-interactive login
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.25'
+
+      # Retrieves your Azure Kubernetes Service cluster's kubeconfig file
+      - name: Get K8s context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.CLUSTER_RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+
+      # Checks if the AKS cluster is private
+      - name: Is private cluster
+        id: isPrivate
         run: |
-          docker-compose -f ${{ env.DOCKER_FILE_PATH }} build
-          
-      - name: Push Docker images
-        run: |
-          docker-compose -f ${{ env.DOCKER_FILE_PATH }} push
+          result=$(az aks show --resource-group ${{ env.CLUSTER_RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --query "apiServerAccessProfile.enablePrivateCluster")
+          echo "PRIVATE_CLUSTER=$result" >> "$GITHUB_OUTPUT"
 
-      # - name: Set up Docker ACI Context
-      #   run: |
-      #     az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-      #     docker context create aci ${{ env.AZURE_CONTAINER_INSTANCES }}
-      #     docker context use ${{ env.AZURE_CONTAINER_INSTANCES }}
-
-      # - name: Deploy to ACI
-      #   run: docker compose up -d
-
-      - name: 'Deploy to Azure Container Instances'
-        run: |
-          az container create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --file ${{ env.DOCKER_FILE_PATH }} \
-          --registry-login-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
-          --registry-username ${{ secrets.REGISTRY_USERNAME }} \
-          --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
-          --name ${{ env.AZURE_CONTAINER_NAME }}
-
-  # deploy:
-  #   permissions:
-  #     actions: read
-  #     contents: read
-  #     id-token: write
-  #   runs-on: ubuntu-latest
-  #   needs: build-and-push
-
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-
-  #     - name: Log in to Azure
-  #       uses: azure/login@v1.4.6
-  #       with:
-  #         client-id: ${{ secrets.AZURE_CLIENT_ID }}
-  #         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-  #         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-          
-  #     - name: Deploy to Azure Container Instances
-  #       uses: Azure/aci-deploy@v1.1.3
-      # - name: Set up kubelogin for non-interactive login
-      #   uses: azure/use-kubelogin@v1
-      #   with:
-      #     kubelogin-version: 'v0.0.25'
-
-      # - name: Get K8s context
-      #   uses: azure/aks-set-context@v3
-      #   with:
-      #     resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
-      #     cluster-name: ${{ env.AZURE_CLUSTER_NAME }}
-      #     admin: 'false'
-      #     use-kubelogin: 'true'
-
-      # # Checks if the AKS cluster is private
-      # - name: Is private cluster
-      #   id: isPrivate
-      #   run: |
-      #     result=$(az aks show --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_CLUSTER_NAME }} --query "apiServerAccessProfile.enablePrivateCluster")
-      #     echo "PRIVATE_CLUSTER=$result" >> "$GITHUB_OUTPUT"
-
-      # # Deploys application based on given manifest  file
-      # - name: Deploys application
-      #   uses: Azure/k8s-deploy@v4
-      #   with:
-      #     action: deploy
-      #     manifests: ${{ env.MANIFEST_PATH }}
-      #     images: |
-      #       ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.AZURE_CONTAINER_NAME }}:${{ github.sha }}
-      #     resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
-      #     name: ${{ env.AZURE_CLUSTER_NAME }}
-      #     private-cluster: ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER == 'true' }}
-      #     namespace: ${{ env.AZURE_NAMESPACE }}
-    
-      # - name: Get AKS credentials
-      #   run: az aks get-credentials --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_CLUSTER_NAME }}
-
-      # - name: Deploy to AKS
-      #   run: |
-      #     kubectl apply -f ${{ env.MANIFEST_PATH }}
+      # Deploys application based on given manifest  file
+      - name: Deploys application
+        uses: Azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: ${{ env.DEPLOYMENT_MANIFEST_PATH }}
+          images: |
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+          resource-group: ${{ env.CLUSTER_RESOURCE_GROUP }}
+          name: ${{ env.CLUSTER_NAME }}
+          private-cluster: ${{ steps.isPrivate.outputs.PRIVATE_CLUSTER == 'true' }}
+          namespace: ${{ env.NAMESPACE }}

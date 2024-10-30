@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dev
+  labels:
+    app: dev
+    kubernetes.azure.com/generator: devhub
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dev
+  template:
+    metadata:
+      labels:
+        app: dev
+    spec:
+      containers:
+        - name: dev
+          image: taiscontainerregistry.azurecr.io/tais-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
