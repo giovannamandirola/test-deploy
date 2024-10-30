@@ -6,11 +6,6 @@ services:
     environment:
       - MYSQL_DATABASE=db-is
       - MYSQL_ROOT_PASSWORD=123456
-    healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      interval: 5s
-      retries: 10
-      timeout: 20s
 
   app:
     image: taiscontainerregistry.azurecr.io/tais-app:$GITHUB_SHA
@@ -22,11 +17,5 @@ services:
       - DB_HOST=mysql
       - DB_LOCAL_PORT=3306
       - ENV=Dev
-    depends_on:
-      mysql:
-        condition: service_healthy
-        restart: true
-    links:
-      - mysql
     ports:
       - 3000:3000
