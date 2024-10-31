@@ -78,14 +78,14 @@ jobs:
       # - name: Deploy to ACI
       #   run: docker compose up -d
 
-      - name: 'Deploy to Azure Container Instances'
-        run: |
-          az container create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --file ${{ env.DOCKER_FILE_PATH }} \
-          --registry-login-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
-          --registry-username ${{ secrets.REGISTRY_USERNAME }} \
-          --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
-          --name ${{ env.AZURE_CONTAINER_NAME }}
+      # - name: 'Deploy to Azure Container Instances'
+      #   run: |
+      #     az container create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+      #     --file ${{ env.DOCKER_FILE_PATH }} \
+      #     --registry-login-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
+      #     --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+      #     --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+      #     --name ${{ env.AZURE_CONTAINER_NAME }}
 
   # deploy:
   #   permissions:
