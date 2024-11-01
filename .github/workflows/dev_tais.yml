@@ -4,6 +4,9 @@
 name: Build and deploy Node.js app to Azure Web App - tais
 
 on:
+  push:
+      branches:
+        - "dev"
   workflow_dispatch:
 
 jobs:
