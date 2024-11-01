@@ -7,5 +7,5 @@ RUN npm install
 
 COPY . .
 
-EXPOSE ${APP_PORT}
+EXPOSE 3000
 CMD ["npm", "start"]
