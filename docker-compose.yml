@@ -7,17 +7,18 @@ services:
       - MYSQL_DATABASE=db-is
       - MYSQL_ROOT_PASSWORD=123456
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       retries: 10
       timeout: 20s
     restart: always
 
   app:
-    image: taiscontainerregistry.azurecr.io/tais-app:6
+    image: taiscontainerregistry.azurecr.io/tais-app:5
     build: .
     environment:
       - DB_NAME=db-is
+      - DB_HOST=mysql
       - DB_USER=root
       - DB_PASS=123456
       - DB_LOCAL_PORT=3306
@@ -25,7 +26,39 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-        restart: true
     restart: always
     ports:
       - 3000:3000
+
+  nginx:
+    image: nginx
+    ports:
+      - 80:80
+    depends_on:
+      - app
+      - mysql
+    restart: always
+    command: >
+      /bin/sh -c "
+      echo 'events {}' > /etc/nginx/nginx.conf &&
+      echo 'http { server { listen 80;
+      
+      location /api {
+        proxy_pass http://app:3000;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+      }
+
+      location /db {
+        proxy_pass http://mysql:3306;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+      }
+
+      } }' >> /etc/nginx/nginx.conf &&
+      nginx -g 'daemon off;'
+      "
